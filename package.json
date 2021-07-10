@@ -1,0 +1,21 @@
+{
+  "name": "positionstrackerbot",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "build": "tsc",
+    "postbuild": "copy package.json dist\\package.json && cd dist && npm i",
+    "start": "npm run-script build && node --trace-warnings dist/app.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "grammy": "^1.1.1",
+    "axios": "^0.21.1",
+    "websocket": "1.0.31"
+  },
+  "devDependencies": {
+    "@types/node": "^15.0.2"
+  }
+}
