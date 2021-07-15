@@ -28,12 +28,19 @@ export class DataService {
     return Object.freeze(DataStorage.globalAdmins);
   }
 
+  // TODO : This needs to be frozen before it is released, but ideally we would never expose the underlying datastore.
   public static getChannels(): readonly Channel[] {
-    return Object.freeze(DataStorage.channels);
+    return DataStorage.channels;
+    // return Object.freeze(DataStorage.channels);
   }
 
   public static getClientChannels(): readonly Channel[] {
     return Object.freeze(DataStorage.channels.filter(channel => channel.client));
+  }
+
+  public static getAdminChannels(): readonly Channel[] {
+    // return Object.freeze(DataStorage.adminChats);
+    return DataStorage.adminChats
   }
 
   public static addChannel(channel: Channel) {
@@ -52,5 +59,14 @@ export class DataService {
 
   public static addAdminChannel(channel: Channel) {
     DataStorage.adminChats.push(channel);
+  }
+
+  public static removeAdminChannel(channel: Channel) {
+    const channelIndex = DataStorage.adminChats.findIndex(chat => chat.id == channel.id)
+
+    console.log(`Remove channel ${channel.title} from admins list at index ${channelIndex}.`)
+    if (channelIndex < 0) throw new Error("Channel does not exist in the admin channel list");
+
+    DataStorage.adminChats.splice(channelIndex);
   }
 }
