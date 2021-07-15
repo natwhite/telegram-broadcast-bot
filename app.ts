@@ -1,9 +1,11 @@
 import {Configuration} from './src/lib/config';
-import {Bot, Api} from 'grammy';
-import {authorizeChat, broadcastMessage, configureClient, requestAuthorization} from './src/bot.functions';
+import {Bot} from 'grammy';
 
 import {DataService} from './src/services/data.service';
 import {User} from './src/interface/telegram/user';
+import {BotFunctions} from './src/bot.functions';
+import {loadCommands} from './src/services/command.loader.service';
+
 
 (async () => {
   await Configuration.loadConfig();
@@ -12,14 +14,7 @@ import {User} from './src/interface/telegram/user';
 
   // Create a bot object
   const bot = new Bot(Configuration.botToken);
-
-
-  // Test broadcast functionality of the bot
-
-
-  // DataService.addChannel(-546135161);
-  // DataService.addChannel(-509572501);
-  // await DataService.saveDatabase();
+  BotFunctions.Configure(bot, bot.api);
 
   console.log('Starting AGN Broadcast Bot...');
 
@@ -27,12 +22,13 @@ import {User} from './src/interface/telegram/user';
   // Set up global catch to prevent bot from preemptively exiting.
   bot.catch(error => console.log(`Caught error : ${error}`));
 
-  // TODO : Ideally, there would be a way to remove authorization from chats, so it becomes necessary to track
-  // const authorizedUsers: number[] = [];
-  // bot.command('auth', authorizeChat);
-  bot.command('auth', authorizeChat);
-  bot.command('broadcast', broadcastMessage);
-  bot.command('configureClient', configureClient);
+  // TODO : Ensure that message is always defined instead of assuming it will be.
+
+  loadCommands(bot);
+
+  // bot.command('configureClient', BotFunctions.configureClient);
+  // bot.command('help', BotFunctions.displayHelp)
+
 
   // Listen to users pressing buttons with that specific payload
   // bot.callbackQuery('contract-positions', showContractPositions);
@@ -56,8 +52,14 @@ import {User} from './src/interface/telegram/user';
   });
 
   // bot.on(':text', requestAuthorization);
-  bot.on(':text', ctx => {
+  bot.on('message', ctx => {
     // console.log(ctx);
+    console.log(ctx.message);
+  });
+
+  // bot.on(':text', requestAuthorization);
+  bot.on('callback_query:data', ctx => {
+    console.log(ctx);
     console.log(ctx.message);
   });
 
