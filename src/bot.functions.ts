@@ -1,45 +1,169 @@
 // TODO : Would be preferable to not have loose typing here, but it would take too long to figure out.
-import {Bot, Context, InlineKeyboard} from 'grammy';
-import {Configuration} from './lib/config';
-// import {Configuration, PhemexAccount} from './lib/config';
-// import {formatActiveContractPositions, formatActiveSpotPositions} from './message.formats';
-import {checkAuth, indent} from './lib/functions';
-import {User} from './interface/telegram/user';
+import {Api, Bot, Context, InlineKeyboard} from 'grammy';
 import {DataService} from './services/data.service';
-import {Channel} from './interface/telegram/channel';
+import {Channel, User} from './interface/telegram';
+import {AdminChannelOnly, AuthorizedCommand, GlobalAdminOnly} from './decorators/context';
+import {Chat, MessageEntity} from 'grammy/out/platform';
+import {checkChannelIsTracked} from './lib/context.functions';
 
-export async function authorizeChat(ctx: Context) {
-  const user: User = ctx.message!.from as User;
-  if (!checkAuth(user)) return;
+export class BotFunctions {
+  private static bot: Bot;
+  private static api: Api;
 
-  const channel: Channel = ctx.message!.chat as Channel;
+  public static Configure(bot: Bot, api: Api) {
+    BotFunctions.bot = bot;
+    BotFunctions.api = api;
+  }
 
-  DataService.addAdminChannel(channel);
+  @GlobalAdminOnly()
+  public static async authorizeChat(ctx: Context) {
+    const channel: Channel = ctx.message!.chat as Channel;
 
-  await DataService.saveDatabase();
-  await ctx.reply(`Added channel ${channel.title} to list of admin channels`);
+    DataService.addAdminChannel(channel);
 
-  // const args = ctx.match;
-  // const key = ' password1:)';
-  //
-  // if (!args || args != key)
-  //   return ctx.reply(`Invalid auth key '${args}', this channel will not be used`);
-  //
-  // // TODO : Would be nice if we could delete the auth key from chat somehow.
-  //
-  // // Create an inline keyboard
-  // // const keyboard = new InlineKeyboard().text('Positions', 'show-positions');
-  // const keyboard = new InlineKeyboard()
-  //   .text('Contract Positions', 'contract-positions')
-  //   .text('← Both →', 'all-positions')
-  //   .text('Spot Positions', 'spot-positions')
-  //   .row()
-  //   .text('settings ⛭', 'settings');
-  // // .text(`${Configuration.timerMinutes} min Timer 🕑`, 'set-timer')
-  // // Send a message with the keyboard
-  // await ctx.reply('Authorized successfully. Select an option below', {
-  //   reply_markup: keyboard,
-  // });
+    await DataService.saveDatabase();
+    await ctx.reply(`Added channel ${channel.title} to list of admin channels`);
+  }
+
+  @AuthorizedCommand()
+  public static async unauthorizeChat(ctx: Context) {
+    const channel: Channel = ctx.message!.chat as Channel;
+
+    DataService.removeAdminChannel(channel);
+
+    await DataService.saveDatabase();
+    await ctx.reply(`Removed channel ${channel.title} from list of admin channels`);
+  }
+
+  @AdminChannelOnly()
+  @AuthorizedCommand()
+  public static async broadcastMessage(ctx: Context) {
+    const rawInput = ctx.message?.text;
+
+    if (!rawInput) {
+      await ctx.reply(`Unable to parse message. ${rawInput}`);
+      throw new Error('Broadcast rawInput cannot be undefined');
+    }
+
+    const cleanedInput = rawInput.slice(ctx.message!.entities![0].length + 1);
+
+    // DataService.getClientChannels().forEach(channel => {
+    DataService.getChannels().forEach(channel => {
+      ctx.api.sendMessage(channel.id, cleanedInput);
+    });
+  }
+
+  @AuthorizedCommand()
+  public static async configureClient(ctx: Context) {
+    await DataService.saveDatabase();
+  }
+
+  @AuthorizedCommand()
+  public static async configureTest1(ctx: Context) {
+    let chat = ctx.message!.chat;
+    let channel = DataService.getChannels().find(channel => channel.id == chat.id);
+    if (!channel) throw new Error('Unable to find channel in database. This is bad.');
+
+    if (!ctx.message!.entities!) throw new Error('There are no mentioned users to modify');
+
+    const mentionedUsers = ctx.message!.entities!
+      .filter(entity => entity.type == 'text_mention')
+      .map(value => (value as MessageEntity.TextMentionMessageEntity).user);
+
+    console.log(`Found users ${mentionedUsers.map(user => user.username || user.first_name).join(', ')}`);
+
+    // Create an inline keyboard
+    // const keyboard = new InlineKeyboard().text('Positions', 'show-positions');
+    let keyboard = new InlineKeyboard();
+    // .text(`${Configuration.timerMinutes} min Timer 🕑`, 'set-timer')
+    // Send a message with the keyboard
+
+    let chatMembers = await BotFunctions.api.getChatAdministrators(chat.id);
+
+    let filteredMembers = chatMembers.filter(member => !member.user.is_bot);
+    console.log(`Got ${filteredMembers.length} members from group`);
+    // console.log(`filtered members are ${JSON.stringify(filteredMembers)}`)
+
+    filteredMembers.forEach(chatMember => {
+      console.log(`Got member ${chatMember.user.id}`);
+      keyboard.text(`${chatMember.user.username || chatMember.user.first_name}`);
+    });
+    keyboard.text('Done', 'done');
+
+    if (channel.lastKeyboardMessageId) {
+      console.log('Tried to create a keyboard in channel that already has one');
+      return;
+    }
+
+    const message = await ctx.reply('Authorized successfully. Select an option below', {
+      reply_markup: keyboard,
+    });
+
+    channel.lastKeyboardMessageId = message.message_id;
+    // await DataService.saveDatabase();
+  }
+
+  @AuthorizedCommand()
+  public static async authorizeUsers(ctx: Context) {
+    let chat = ctx.message!.chat;
+    let channel = DataService.getChannels().find(channel => channel.id == chat.id);
+    if (!channel) throw new Error('Unable to find channel in database. This is bad.');
+
+    if (!ctx.message!.entities!) throw new Error('There are no mentioned users to modify');
+
+    console.log(`Getting mentioned users`);
+    const mentionedUsers = ctx.message!.entities!
+      .filter(entity => entity.type == 'text_mention')
+      .map(value => (value as MessageEntity.TextMentionMessageEntity).user)
+      .map(({id, is_bot, first_name, language_code}) => ({id, is_bot, first_name, language_code} as User));
+
+    channel.authorizedUsers.push(...mentionedUsers);
+    await DataService.saveDatabase();
+
+    let message = `Added users ${mentionedUsers.map(user => user.first_name).join(', ')} to list of authorized users for channel ${channel.title}`;
+    console.log(message);
+    await ctx.reply(message);
+  }
+
+  @AuthorizedCommand()
+  public static async configureTest2(ctx: Context) {
+    let chat = ctx.message!.chat;
+    let channel = DataService.getChannels().find(channel => channel.id == chat.id);
+    if (!channel) throw new Error('Unable to find channel in database. This is bad.');
+
+    if (!channel.lastKeyboardMessageId) {
+      console.log('This command requires there to be a previous keyboard to modify');
+      return;
+    }
+
+    await BotFunctions.api.editMessageText(channel.id, channel.lastKeyboardMessageId, 'werfsefsdf');
+
+    await DataService.saveDatabase();
+  }
+
+  @AuthorizedCommand()
+  public static async initializeChat(ctx: Context) {
+    const chat = ctx.message!.chat as Chat.GroupChat;
+
+    if (checkChannelIsTracked(chat)) return ctx.reply('Channel has already been initialized.');
+
+    const channel = Channel.fromContext(ctx);
+
+    DataService.addChannel(channel);
+
+    await DataService.saveDatabase();
+
+    return ctx.reply('Channel initialized successfully.');
+  }
+
+  @AdminChannelOnly()
+  public static async showCommand(ctx: Context) {
+    const helpText = '/show <groups|admins>\n\t\tList tracked groups or admins'
+      + '\n/show groups <groupname>\n\t\tLists description and members of the given group';
+
+    return ctx.reply(helpText);
+  }
+
 }
 
 // function generateAccountHeader(account: PhemexAccount) {
@@ -133,13 +257,6 @@ export async function requestAuthorization(ctx: any) {
   await ctx.reply('Please authorize the bot and use the generated keyboard to issue commands.');
 }
 
-export async function broadcastMessage(ctx: any) {
-  const message = 'yolo';
-  DataService.getClientChannels().forEach(channel => {
-    ctx.api.sendMessage(channel.id, message);
-  });
-}
-
 export async function addClientToChannel(ctx: any) {
 
 }
@@ -148,8 +265,3 @@ export async function addGlobalAdmin(ctx: any) {
   // const user: User = ctx.
 }
 
-
-export async function configureClient(ctx: any) {
-
-  await DataService.saveDatabase();
-}
