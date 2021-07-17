@@ -1,8 +1,13 @@
-// TODO : Would be preferable to not have loose typing here, but it would take too long to figure out.
 import {Api, Bot, Context, InlineKeyboard} from 'grammy';
 import {DataService} from './services/data.service';
 import {Channel, User} from './interface/telegram';
-import {AdminChannelOnly, AuthorizedCommand, GlobalAdminOnly} from './decorators/context';
+import {
+  AdminChannelOnly,
+  AuthorizedCommand,
+  GlobalAdminOnly,
+  TrackedServersOnly,
+  BotCommand,
+} from './decorators/context';
 import {Chat, MessageEntity} from 'grammy/out/platform';
 import {checkChannelIsTracked} from './lib/context.functions';
 
@@ -15,9 +20,16 @@ export class BotFunctions {
     BotFunctions.api = api;
   }
 
+  // NOTE : Order of declaration is important for determining which function to execute when triggers overlap
+
+  @BotCommand({
+    trigger: 'authorizeChat',
+    description: 'Flag this chat as an admin channel. Must be run by a global admin',
+  })
+  @TrackedServersOnly()
   @GlobalAdminOnly()
   public static async authorizeChat(ctx: Context) {
-    const channel: Channel = ctx.message!.chat as Channel;
+    const channel = Channel.fromContext(ctx);
 
     DataService.addAdminChannel(channel);
 
@@ -25,9 +37,14 @@ export class BotFunctions {
     await ctx.reply(`Added channel ${channel.title} to list of admin channels`);
   }
 
+  @BotCommand({
+    trigger: 'unauthorizeChat',
+    description: 'Remove this channel from the list of admin channels. Must be run by a global admin',
+  })
+  @TrackedServersOnly()
   @AuthorizedCommand()
   public static async unauthorizeChat(ctx: Context) {
-    const channel: Channel = ctx.message!.chat as Channel;
+    const channel = Channel.fromContext(ctx);
 
     DataService.removeAdminChannel(channel);
 
@@ -35,6 +52,11 @@ export class BotFunctions {
     await ctx.reply(`Removed channel ${channel.title} from list of admin channels`);
   }
 
+  @BotCommand({
+    trigger: 'broadcast',
+    arguments: '<group = all>',
+    description: 'Send a message to all channels in the specified group. Must be run by a global admin in an admin channel',
+  })
   @AdminChannelOnly()
   @AuthorizedCommand()
   public static async broadcastMessage(ctx: Context) {
@@ -53,12 +75,10 @@ export class BotFunctions {
     });
   }
 
-  @AuthorizedCommand()
-  public static async configureClient(ctx: Context) {
-    await DataService.saveDatabase();
-  }
-
-  @AuthorizedCommand()
+  @BotCommand({
+    trigger: 'configureTest1',
+    description: 'Configuration testing no 1',
+  })
   public static async configureTest1(ctx: Context) {
     let chat = ctx.message!.chat;
     let channel = DataService.getChannels().find(channel => channel.id == chat.id);
@@ -103,9 +123,15 @@ export class BotFunctions {
     // await DataService.saveDatabase();
   }
 
+  @BotCommand({
+    trigger: 'authorizeUsers',
+    arguments: '<user1[, user2, ...]>',
+    description: 'Grant the mentioned user(s) elevated privileges in this channel. Must be run by an authorized user in this channel or a global admin.',
+  })
+  @TrackedServersOnly()
   @AuthorizedCommand()
   public static async authorizeUsers(ctx: Context) {
-    let chat = ctx.message!.chat;
+    let chat = ctx.message!.chat as Chat.GroupChat;
     let channel = DataService.getChannels().find(channel => channel.id == chat.id);
     if (!channel) throw new Error('Unable to find channel in database. This is bad.');
 
@@ -125,7 +151,10 @@ export class BotFunctions {
     await ctx.reply(message);
   }
 
-  @AuthorizedCommand()
+  @BotCommand({
+    trigger: 'configureTest2',
+    description: 'Configuration testing no 1',
+  })
   public static async configureTest2(ctx: Context) {
     let chat = ctx.message!.chat;
     let channel = DataService.getChannels().find(channel => channel.id == chat.id);
@@ -141,6 +170,10 @@ export class BotFunctions {
     await DataService.saveDatabase();
   }
 
+  @BotCommand({
+    trigger: 'initialize',
+    description: 'Not really sure what this was meant to do again...',
+  })
   @AuthorizedCommand()
   public static async initializeChat(ctx: Context) {
     const chat = ctx.message!.chat as Chat.GroupChat;
@@ -156,6 +189,11 @@ export class BotFunctions {
     return ctx.reply('Channel initialized successfully.');
   }
 
+  @BotCommand({
+    trigger: 'show',
+    description: 'Still in alpha, will list show information about a channel, group, or user',
+  })
+  @TrackedServersOnly()
   @AdminChannelOnly()
   public static async showCommand(ctx: Context) {
     const helpText = '/show <groups|admins>\n\t\tList tracked groups or admins'
@@ -165,56 +203,6 @@ export class BotFunctions {
   }
 
 }
-
-// function generateAccountHeader(account: PhemexAccount) {
-//   return `${account.name} Positions :`;
-// }
-
-// export async function showContractPositions(ctx: any) {
-//   console.log(`Show contract positions requested from channel ${ctx.chat ? ctx.chat.id : '---'} by ${ctx.chatMember}`);
-//   await Promise
-//     .all(Configuration.accounts.map<Promise<string>>(acc => formatActiveContractPositions(acc)))
-//     .then(positions => {
-//       // console.log(`Positions are ${JSON.stringify(positions)}`);
-//       ctx.reply(`---- Tracking ${positions.length} Accounts ----\n\n` + positions
-//         .map(pos => indent(pos, Configuration.indent))
-//         .map((indentedPos, index) => [generateAccountHeader(Configuration.accounts[index]), indentedPos]
-//           .join('\n'))
-//         .join('\n'));
-//     }).catch(err => `Error: Unable to retrieve contract positions and post results to chat - ${err}`);
-// }
-
-// export async function showSpotPositions(ctx: any) {
-//   console.log(`Show spot positions requested from channel ${ctx.chat ? ctx.chat.id : '---'} by ${ctx.chatMember}`);
-//   await Promise
-//     .all(Configuration.accounts.map<Promise<string>>(acc => formatActiveSpotPositions(acc)))
-//     .then(positions => {
-//       console.log(`Positions are ${JSON.stringify(positions)}`);
-//       ctx.reply(`---- Tracking ${positions.length} Accounts ----\n\n` + positions
-//         .map(pos => indent(pos, Configuration.indent))
-//         .map((indentedPos, index) => [generateAccountHeader(Configuration.accounts[index]), indentedPos]
-//           .join('\n'))
-//         .join('\n'));
-//     }).catch(err => `Error: Unable to retrieve spot positions and post results to chat - ${err}`);
-// }
-
-// TODO : decide if you want to pass the ctx param to these functions
-// On one hand, you can encapsulate everything cleanly in app.ts by passing it, but without typing it's not as clean
-// Not to mention, having this function evaluate to a string allows it to be more modular which eases debugging.
-// export async function getAllPositions() {
-//   console.log('Show all positions requested ');
-//   // TODO : Would be really nice to have observables here instead.
-//   return await Promise
-//     .all(Configuration.accounts.map<Promise<string[]>>(acc => Promise
-//       .all([formatActiveContractPositions(acc), formatActiveSpotPositions(acc)])))
-//     .then(positionsSets => positionsSets.map<string>(set => set.join('\n')))
-//     .then(positions => `---- Tracking ${positions.length} Accounts ----\n` + positions
-//       .map(pos => indent(pos, Configuration.indent))
-//       .map((indentedPos, index) => [generateAccountHeader(Configuration.accounts[index]), indentedPos]
-//         .join('\n'))
-//       .join('\n'))
-//     .catch(err => `Error: Unable to retrieve contract / Spot positions and post results to chat - ${err}`);
-// }
 
 export async function adjustBotSettings(ctx: any) {
   console.log(`Settings adjustment requested`);
@@ -227,41 +215,3 @@ export async function adjustBotSettings(ctx: any) {
     reply_markup: keyboard,
   });
 }
-
-// export async function createTimer(bot: Bot, ctx: any) {
-//
-//   const id = ctx.chat ? ctx.chat.id : 0;
-//   console.log(`Timer creation requested from channel ${id} by ${ctx.chatMember}`);
-//   const keyboard = new InlineKeyboard().text('Cancel Timer', `cancel-timer-${id}`);
-//   ctx.reply(`Timer has been created and will update positions every '${Configuration.timerMinutes}' minute(s)`, {
-//     reply_markup: keyboard,
-//   });
-//
-//   const interval = setInterval(() => {
-//     getAllPositions()
-//       .then(res => ctx.reply(res, {
-//         reply_markup: keyboard,
-//       }))
-//       .catch(err => `Error: Unable to retrieve and post results to chat - ${err}`);
-//   }, Configuration.timerMinutes * 60 * 1000);
-//
-//   // This is created here to loosely support simultaneous timers in multiple channels.
-//   bot.callbackQuery(`cancel-timer-${id}`, ctx => {
-//     console.log(`Timer deletion requested from channel ${id} by ${ctx.chatMember}`);
-//     clearInterval(interval);
-//     ctx.reply(`Deleting timing from channel`);
-//   });
-// }
-
-export async function requestAuthorization(ctx: any) {
-  await ctx.reply('Please authorize the bot and use the generated keyboard to issue commands.');
-}
-
-export async function addClientToChannel(ctx: any) {
-
-}
-
-export async function addGlobalAdmin(ctx: any) {
-  // const user: User = ctx.
-}
-
