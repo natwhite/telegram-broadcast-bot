@@ -1,53 +1,25 @@
 import {Bot, Context} from 'grammy';
-import {BotFunctions} from '../bot.functions';
 
-type Command = {
+export type Command = {
   trigger: string;
-  func: (ctx: Context) => void;
-  description?: string;
+  func?: (ctx: Context) => void;
+  arguments?: string;
+  description: string;
   helpText?: string;
 }
 
-const commandList: Command[] = [
-  {
-    trigger: 'authorizeChat',
-    func: BotFunctions.authorizeChat,
-  },
-  {
-    trigger: 'unauthorizeChat',
-    func: BotFunctions.unauthorizeChat,
-  },
-  {
-    trigger: 'broadcast',
-    func: BotFunctions.broadcastMessage,
-  },
-  {
-    trigger: 'configureTest1',
-    func: BotFunctions.configureTest1,
-  },
-  {
-    trigger: 'configureTest2',
-    func: BotFunctions.configureTest2,
-  },
-  {
-    trigger: 'authorizeUsers',
-    func: BotFunctions.authorizeUsers,
-  },
-  {
-    trigger: 'initialize',
-    func: BotFunctions.initializeChat,
-  },
-  {
-    trigger: 'show',
-    func: BotFunctions.showCommand,
-  },
-];
+export class CommandLoaderService {
+  public static commandList: Command[] = [];
 
-export const loadCommands = (bot: Bot) => {
-  commandList.forEach(command => bot.command(command.trigger, command.func));
+  public static loadCommands(bot: Bot) {
+    // TODO : need to confirm that each command has an associated function.
+    CommandLoaderService.commandList.forEach(command => {
+      if (!command.func) throw new Error(`There is no function associated with the trigger ${command.trigger}!`);
+      bot.command(command.trigger, command.func);
+    });
 
+    const helpText = CommandLoaderService.commandList.reduce((buildingHelpText, command) => buildingHelpText + `\n/${command.trigger} ${command.arguments || ''}: ${command.description}`, '');
 
-  const helpText = commandList.reduce((commandList, command) => commandList + `\n/${command.trigger}`, '');
-
-  bot.command('helpText', ctx => ctx.reply(helpText));
-};
+    bot.command('help', ctx => ctx.reply(helpText));
+  };
+}
