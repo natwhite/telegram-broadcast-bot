@@ -24,23 +24,23 @@ export class DataService {
     await FileService.saveFile<DataStorage>(dataFile, DataStorage);
   };
 
+  // NOTE : We are using slice here to create a copy of the array before releasing it so we don't expose the underlying DataStore
+
   public static getAuthorizedAdmins(): readonly User[] {
-    return Object.freeze(DataStorage.globalAdmins);
+    return DataStorage.globalAdmins.slice();
   }
 
-  // TODO : This needs to be frozen before it is released, but ideally we would never expose the underlying datastore.
   public static getChannels(): readonly Channel[] {
-    return DataStorage.channels;
-    // return Object.freeze(DataStorage.channels);
+    return DataStorage.channels.slice();
   }
 
   public static getClientChannels(): readonly Channel[] {
-    return Object.freeze(DataStorage.channels.filter(channel => channel.client));
+    return DataStorage.channels.filter(channel => channel.client);
   }
 
   public static getAdminChannels(): readonly Channel[] {
     // return Object.freeze(DataStorage.adminChats);
-    return DataStorage.adminChats
+    return DataStorage.adminChats.slice();
   }
 
   public static addChannel(channel: Channel) {
@@ -55,10 +55,12 @@ export class DataService {
     }
 
     matchedChannel.client = client;
+    return DataService;
   }
 
-  public static addAdminChannel(channel: Channel) {
+  public static addAdminChannel(channel: Channel): DataService {
     DataStorage.adminChats.push(channel);
+    return DataService;
   }
 
   public static removeAdminChannel(channel: Channel) {
@@ -68,5 +70,10 @@ export class DataService {
     if (channelIndex < 0) throw new Error("Channel does not exist in the admin channel list");
 
     DataStorage.adminChats.splice(channelIndex);
+    return DataService;
   }
+
+  // Local reference to a static function to allow saving the database using command chaining.
+
+  saveDatabase = () => DataService.saveDatabase();
 }
