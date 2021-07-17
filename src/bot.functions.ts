@@ -9,7 +9,7 @@ import {
   BotCommand,
 } from './decorators/context';
 import {Chat, MessageEntity} from 'grammy/out/platform';
-import {checkChannelIsTracked} from './lib/context.functions';
+import {checkChannelIsTracked, parseCommandTextFromContext} from './lib/context.functions';
 
 export class BotFunctions {
   private static bot: Bot;
@@ -31,9 +31,10 @@ export class BotFunctions {
   public static async authorizeChat(ctx: Context) {
     const channel = Channel.fromContext(ctx);
 
-    DataService.addAdminChannel(channel);
+    await DataService
+      .addAdminChannel(channel)
+      .saveDatabase();
 
-    await DataService.saveDatabase();
     await ctx.reply(`Added channel ${channel.title} to list of admin channels`);
   }
 
@@ -46,9 +47,10 @@ export class BotFunctions {
   public static async unauthorizeChat(ctx: Context) {
     const channel = Channel.fromContext(ctx);
 
-    DataService.removeAdminChannel(channel);
+    await DataService
+      .removeAdminChannel(channel)
+      .saveDatabase();
 
-    await DataService.saveDatabase();
     await ctx.reply(`Removed channel ${channel.title} from list of admin channels`);
   }
 
@@ -59,19 +61,32 @@ export class BotFunctions {
   })
   @AdminChannelOnly()
   @AuthorizedCommand()
-  public static async broadcastMessage(ctx: Context) {
-    const rawInput = ctx.message?.text;
+  public static async broadcastMessage(context: Context) {
+    const rawMessage = parseCommandTextFromContext(context);
 
-    if (!rawInput) {
-      await ctx.reply(`Unable to parse message. ${rawInput}`);
-      throw new Error('Broadcast rawInput cannot be undefined');
-    }
+    if (!rawMessage) throw new Error('Broadcast message cannot be undefined');
 
-    const cleanedInput = rawInput.slice(ctx.message!.entities![0].length + 1);
+    let splitMessage = rawMessage.trim().split(' ');
+    const groupName = splitMessage[0];
+    const broadcastMessage = splitMessage.slice(1).join(' ');
 
     // DataService.getClientChannels().forEach(channel => {
-    DataService.getChannels().forEach(channel => {
-      ctx.api.sendMessage(channel.id, cleanedInput);
+    if (groupName == 'all') {
+      DataService.getChannels().forEach(({id}) => {
+        BotFunctions.api.sendMessage(id, broadcastMessage);
+      });
+      return;
+    }
+
+    let channelGroup = DataService.getChannelGroups().find(channelGroup => channelGroup.name == groupName);
+
+    if (!channelGroup) {
+      await context.reply(`Unable to find group ${groupName}. You must specify a group name or 'all'`);
+      return;
+    }
+
+    channelGroup.channelsIds.forEach(id => {
+      BotFunctions.api.sendMessage(id, broadcastMessage);
     });
   }
 
@@ -202,6 +217,37 @@ export class BotFunctions {
     return ctx.reply(helpText);
   }
 
+  @BotCommand({
+    trigger: 'addChatToGroup',
+    arguments: '<groupName>',
+    description: 'Add this chat to the given group',
+  })
+  @GlobalAdminOnly()
+  public static async addChatToGroup(context: Context) {
+    const commandText = parseCommandTextFromContext(context);
+
+    if (!commandText) {
+      await context.reply('Group name Cannot be left defined. see usage from /help');
+      throw new Error('Channel Group cannot be undefined');
+    }
+
+    // Just going to use the first word of the command text as the group name.
+    const groupName = commandText.split(' ')[0];
+
+    const chat: Chat.GroupChat = context.message!.chat as Chat.GroupChat;
+    let channel = DataService.getChannels().find(channel => channel.id == chat.id);
+
+    if (!channel) {
+      channel = Channel.fromContext(context);
+      DataService.addChannel(channel);
+    }
+
+    await context.reply(`Adding Channel ${channel.title} to group ${groupName}`);
+
+    await DataService
+      .addChannelToGroup(channel, groupName)
+      .saveDatabase();
+  }
 }
 
 export async function adjustBotSettings(ctx: any) {

@@ -1,6 +1,7 @@
 import {DataService} from '../services/data.service';
 import {Chat} from 'grammy/out/platform';
 import {User} from '../interface/telegram/user';
+import {Context} from 'grammy';
 
 /**
  * Checks if the given channel is in the list of Admin Channels
@@ -69,4 +70,19 @@ export function checkUserGlobalAuth(user: User): boolean {
   );
 
   return isGlobalAdmin;
+}
+
+/**
+ * Extracts the text following the command argument from a Grammy Context
+ *
+ * @param context The message context to extract the text from
+ *
+ * @return The text string following the command or undefined.
+ */
+export function parseCommandTextFromContext(context: Context): string | undefined {
+  const rawInput = context.message?.text;
+
+  return rawInput
+    ? rawInput.slice(context.message!.entities![0].length + 1)
+    : undefined;
 }

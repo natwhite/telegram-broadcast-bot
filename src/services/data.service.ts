@@ -1,11 +1,13 @@
 import {Channel, Client, User} from '../interface/telegram';
 import {FileService} from './file.service';
 import {indent} from '../lib/functions';
+import {ChannelGroup} from '../interface/ChannelGroup';
 
 class DataStorage {
   public static channels: Channel[] = [];
   public static globalAdmins: User[] = [];
   public static adminChats: Channel[] = [];
+  public static channelGroups: ChannelGroup[] = [];
 }
 
 const dataFile = 'dataStore.json';
@@ -43,11 +45,36 @@ export class DataService {
     return DataStorage.adminChats.slice();
   }
 
-  public static addChannel(channel: Channel) {
+  public static getChannelGroups(): readonly ChannelGroup[] {
+    return DataStorage.channelGroups.slice();
+  }
+
+  public static getChannelGroupByName(channelGroupName: string): ChannelGroup | undefined {
+    return DataStorage.channelGroups.find(channelGroup => channelGroup.name == channelGroupName);
+  }
+
+  // NOTE : Functions that affect the state of the DataStorage return the DataService to allow command chaining.
+
+  public static addChannel(channel: Channel): DataService {
     DataStorage.channels.push(channel);
+    return DataService;
   };
 
-  public static configureClient(channel: Channel, client: Client): void {
+  public static addChannelToGroup(channel: Channel, groupName: string): DataService {
+    const channelGroup = DataStorage.channelGroups.find(channelGroup => channelGroup.name == groupName);
+
+    if (!channelGroup) {
+      console.log(`Unable to find existing channel group ${groupName}, creating one instead`);
+      const newChannelGroup = new ChannelGroup(groupName, [channel.id]);
+      DataStorage.channelGroups.push(newChannelGroup);
+    } else {
+      channelGroup.channelsIds.push(channel.id);
+    }
+
+    return DataService;
+  }
+
+  public static configureClient(channel: Channel, client: Client): DataService {
     const matchedChannel = DataStorage.channels.find(c => c.id == channel.id);
 
     if (!matchedChannel) {
@@ -63,11 +90,11 @@ export class DataService {
     return DataService;
   }
 
-  public static removeAdminChannel(channel: Channel) {
-    const channelIndex = DataStorage.adminChats.findIndex(chat => chat.id == channel.id)
+  public static removeAdminChannel(channel: Channel): DataService {
+    const channelIndex = DataStorage.adminChats.findIndex(chat => chat.id == channel.id);
 
-    console.log(`Remove channel ${channel.title} from admins list at index ${channelIndex}.`)
-    if (channelIndex < 0) throw new Error("Channel does not exist in the admin channel list");
+    console.log(`Remove channel ${channel.title} from admins list at index ${channelIndex}.`);
+    if (channelIndex < 0) throw new Error('Channel does not exist in the admin channel list');
 
     DataStorage.adminChats.splice(channelIndex);
     return DataService;
