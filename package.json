@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "build": "tsc",
-    "postbuild": "copy package.json dist\\package.json && cd dist && npm i",
+    "postbuild": "cp package.json dist\\package.json && cd dist && npm i",
     "start": "npm run-script build && node --trace-warnings dist/app.js"
   },
   "author": "",
