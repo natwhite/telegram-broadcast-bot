@@ -4,11 +4,19 @@ const configFile = 'config.json';
 
 export class Configuration {
   static indent = 4;
-  static botToken: string;
+  static botToken: string = 'Put-Your-Bot-API_TOKEN-here';
 
   static async loadConfig(): Promise<Configuration> {
-    const configuration = await FileService.loadFile<Configuration>(configFile);
-    Object.assign(Configuration, configuration);
+    const configFileExists = await FileService.fileExists(configFile);
+
+    console.log(`Configuration file exists? ${configFileExists}`);
+    if (!configFileExists) {
+      await Configuration.saveConfig();
+    } else {
+      const configuration = await FileService.loadFile<Configuration>(configFile);
+      Object.assign(Configuration, configuration);
+    }
+
     return Configuration;
   };
 

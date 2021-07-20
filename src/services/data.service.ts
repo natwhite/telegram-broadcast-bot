@@ -1,6 +1,5 @@
 import {Channel, Client, User} from '../interface/telegram';
 import {FileService} from './file.service';
-import {indent} from '../lib/functions';
 import {ChannelGroup} from '../interface/ChannelGroup';
 
 class DataStorage {
@@ -14,11 +13,15 @@ const dataFile = 'dataStore.json';
 
 export class DataService {
   public static async loadDatabase(): Promise<DataStorage> {
-    const dataStore = await FileService.loadFile<DataStorage>(dataFile);
+    const dataStoreExists = await FileService.fileExists(dataFile);
 
-    console.log(JSON.stringify(dataStore, null, 4));
+    if (!dataStoreExists) {
+      await DataService.saveDatabase();
+    } else {
+      const dataStore = await FileService.loadFile<DataStorage>(dataFile);
+      Object.assign(DataStorage, dataStore);
+    }
 
-    Object.assign(DataStorage, dataStore);
     return DataStorage;
   };
 
