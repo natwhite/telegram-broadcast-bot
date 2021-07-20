@@ -2,7 +2,6 @@ import {Configuration} from './src/lib/config';
 import {Bot} from 'grammy';
 
 import {DataService} from './src/services/data.service';
-import {User} from './src/interface/telegram/user';
 import {BotFunctions} from './src/bot.functions';
 import {CommandLoaderService} from './src/services/command.loader.service';
 
