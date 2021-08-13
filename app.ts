@@ -33,3 +33,5 @@ import {CommandLoaderService} from './src/services/command.loader.service';
   // Start the bot (using long polling)
   await bot.start({drop_pending_updates: true});
 })();
+
+//testing
