@@ -6,6 +6,7 @@ export type Command = {
   arguments?: string;
   description: string;
   helpText?: string;
+  hiddenCommand?: boolean
 }
 
 export class CommandLoaderService {
@@ -18,7 +19,9 @@ export class CommandLoaderService {
       bot.command(command.trigger, command.func);
     });
 
-    const helpText = CommandLoaderService.commandList.reduce((buildingHelpText, command) => buildingHelpText + `\n/${command.trigger} ${command.arguments || ''}: ${command.description}`, '');
+    const helpText = CommandLoaderService.commandList
+      .filter(({hiddenCommand}) => !hiddenCommand)
+      .reduce((buildingHelpText, command) => buildingHelpText + `\n/${command.trigger} ${command.arguments || ''}: ${command.description}`, '');
 
     bot.command('help', ctx => ctx.reply(helpText));
   };

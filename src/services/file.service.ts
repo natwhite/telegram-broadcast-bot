@@ -27,7 +27,8 @@ export class FileService {
 
         Object.assign(result, JSON.parse(data.toString()));
         // console.log(`Configuration : ${JSON.stringify(Object.assign({}, Configuration))}`);
-        console.log(`Loaded data file ${fileName} successfully...\n${JSON.stringify(result)}`);
+        console.log(`Loaded data file ${fileName} successfully.`);
+        // console.log(JSON.stringify(result));
         return resolve(result);
       });
     });
