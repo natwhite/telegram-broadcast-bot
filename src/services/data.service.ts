@@ -1,6 +1,8 @@
 import {Channel, Client, User} from '../interface/telegram';
 import {FileService} from './file.service';
 import {ChannelGroup} from '../interface/ChannelGroup';
+import {Context} from 'grammy';
+import {Chat} from 'grammy/out/platform';
 
 class DataStorage {
   public static channels: Channel[] = [];
@@ -39,8 +41,26 @@ export class DataService {
     return DataStorage.channels.slice();
   }
 
+  public static getChannelByName(channelTitle: string): Channel | undefined {
+    return DataStorage.channels.find(channel => channel.title == channelTitle);
+  }
+
+  public static getChannelFromContext(context: Context): Channel {
+    let message = context.message;
+    if (!message)
+      throw new Error('Message should not be undefined in this context');
+
+    const chat: Chat.GroupChat = message.chat as Chat.GroupChat;
+    let channel = DataStorage.channels.find(channel => channel.id == chat.id);
+
+    if (!channel)
+      throw new Error('Channel should not be undefined in this context');
+
+    return channel;
+  }
+
   public static getClientChannels(): readonly Channel[] {
-    return DataStorage.channels.filter(channel => channel.client);
+    return DataStorage.channels.filter(channel => !!channel.client).slice();
   }
 
   public static getAdminChannels(): readonly Channel[] {
@@ -48,12 +68,12 @@ export class DataService {
     return DataStorage.adminChats.slice();
   }
 
-  public static getChannelGroups(): readonly ChannelGroup[] {
+  public static getGroups(): readonly ChannelGroup[] {
     return DataStorage.channelGroups.slice();
   }
 
-  public static getChannelGroupByName(channelGroupName: string): ChannelGroup | undefined {
-    return DataStorage.channelGroups.find(channelGroup => channelGroup.name == channelGroupName);
+  public static getGroupByName(groupName: string): ChannelGroup | undefined {
+    return DataStorage.channelGroups.find(group => group.name == groupName);
   }
 
   // NOTE : Functions that affect the state of the DataStorage return the DataService to allow command chaining.
