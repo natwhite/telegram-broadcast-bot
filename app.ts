@@ -17,7 +17,11 @@ import {CommandLoaderService} from './src/services/command.loader.service';
   console.log('Starting AGN Broadcast Bot...');
 
   // Set up global catch to prevent bot from preemptively exiting.
-  bot.catch(error => console.log(`Caught error : ${error}`));
+  bot.catch((error) => {
+    const message = String(error.error).split("\n")[0]
+    console.log(error.error)
+    error.ctx.reply(message)
+  });
 
   CommandLoaderService.loadCommands(bot);
 
