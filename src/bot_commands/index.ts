@@ -1,5 +1,5 @@
 import {AddChatToGroup} from './add.chat.to.group';
-import {AuthorizeChat} from './authorizeChat';
+import {AuthorizeChat} from './authorize.chat';
 import {InitializeChat} from './initialize.chat';
 import {AuthorizeUsers} from './authorize.users';
 import {UnauthorizeChat} from './unauthorize.chat';
