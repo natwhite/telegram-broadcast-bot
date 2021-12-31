@@ -5,6 +5,10 @@ import {BroadcastMessage} from './broadcast.message';
 import {UnauthorizeChat} from './unauthorize.chat';
 import {InitializeChat} from './initialize.chat';
 import {ShowCommands} from './show.commands';
+import {RemoveChatFromGroup} from './remove.chat.from.group';
+import {DisplayHelp} from './display.help';
+import { RemoveAdmin } from './remove.admin';
+import { AddAdmin } from './add.admin';
 
 export {
   AddChatToGroup,
@@ -13,5 +17,9 @@ export {
   BroadcastMessage,
   UnauthorizeChat,
   InitializeChat,
-  ShowCommands
-}
+  RemoveChatFromGroup,
+  ShowCommands,
+  DisplayHelp,
+  AddAdmin,
+  RemoveAdmin
+};

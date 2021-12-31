@@ -11,6 +11,7 @@ export type Command = {
 
 export class CommandLoaderService {
   public static commandList: Command[] = [];
+  public static helpText: string;
 
   public static loadCommands(bot: Bot) {
     // TODO : need to confirm that each command has an associated function.
@@ -19,10 +20,8 @@ export class CommandLoaderService {
       bot.command(command.trigger, command.func);
     });
 
-    const helpText = CommandLoaderService.commandList
+    CommandLoaderService.helpText = CommandLoaderService.commandList
       .filter(({hiddenCommand}) => !hiddenCommand)
       .reduce((buildingHelpText, command) => buildingHelpText + `\n/${command.trigger} ${command.arguments || ''}: ${command.description}`, '');
-
-    bot.command('help', ctx => ctx.reply(helpText));
   };
 }

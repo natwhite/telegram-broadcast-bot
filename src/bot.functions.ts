@@ -7,11 +7,16 @@ import {
   BotCommand,
 } from './decorators/context';
 import {
+  AddAdmin,
   AddChatToGroup,
   AuthorizeChat,
   AuthorizeUsers,
   BroadcastMessage,
-  InitializeChat, ShowCommands,
+  DisplayHelp,
+  InitializeChat,
+  RemoveAdmin,
+  RemoveChatFromGroup,
+  ShowCommands,
   UnauthorizeChat,
 } from './bot_commands';
 
@@ -27,9 +32,20 @@ export class BotFunctions {
   // NOTE : Order of declaration is important for determining which function to execute when triggers overlap
 
   @BotCommand({
+    trigger: 'help',
+    description: 'Display this help message with a list of available commands and their usages.',
+    hiddenCommand: false,
+  })
+  @TrackedServersOnly()
+  @GlobalAdminOnly()
+  public static async DisplayHelp(context: Context) {
+    return await DisplayHelp(context);
+  }
+
+  @BotCommand({
     trigger: 'authorizeChat',
     description: 'Flag this chat as an admin channel. Must be run by a global admin',
-    hiddenCommand: true,
+    hiddenCommand: false,
   })
   @TrackedServersOnly()
   @GlobalAdminOnly()
@@ -40,7 +56,7 @@ export class BotFunctions {
   @BotCommand({
     trigger: 'unauthorizeChat',
     description: 'Remove this channel from the list of admin channels. Must be run by a global admin',
-    hiddenCommand: true,
+    hiddenCommand: false,
   })
   @TrackedServersOnly()
   @GlobalAdminOnly()
@@ -56,13 +72,36 @@ export class BotFunctions {
   @AdminChannelOnly()
   @AuthorizedCommand()
   public static async broadcastMessage(context: Context) {
-    return await BroadcastMessage(context, this.api);
+    return await BroadcastMessage(context, BotFunctions.api);
+  }
+
+  @BotCommand({
+    trigger: 'addAdmin',
+    arguments: '<@username>',
+    description: 'Add the mentioned user to the list of global admins',
+  })
+  @AdminChannelOnly()
+  @AuthorizedCommand()
+  public static async addAdmin(context: Context) {
+    return await AddAdmin(context);
+  }
+
+  @BotCommand({
+    trigger: 'removeAdmin',
+    arguments: '<@username>',
+    description: 'Remove the mentioned user to the list of global admins',
+  })
+  @AdminChannelOnly()
+  @AuthorizedCommand()
+  public static async removeAdmin(context: Context) {
+    return await RemoveAdmin(context);
   }
 
   @BotCommand({
     trigger: 'authorizeUsers',
     arguments: '<user1[, user2, ...]>',
     description: 'Grant the mentioned user(s) elevated privileges in this channel. Must be run by an authorized user in this channel or a global admin.',
+    hiddenCommand: true,
   })
   @TrackedServersOnly()
   @AuthorizedCommand()
@@ -91,7 +130,7 @@ export class BotFunctions {
   }
 
   @BotCommand({
-    trigger: 'addChatToGroup',
+    trigger: 'addToGroup',
     arguments: '<groupName>',
     description: 'Add this chat to the given group',
   })
@@ -100,8 +139,18 @@ export class BotFunctions {
   public static async addChatToGroup(context: Context) {
     return await AddChatToGroup(context);
   }
-}
 
+  @BotCommand({
+    trigger: 'removeFromGroup',
+    arguments: '<groupName>',
+    description: 'Remove this chat from the given group',
+  })
+  @TrackedServersOnly()
+  @GlobalAdminOnly()
+  public static async removeChatFromGroup(context: Context) {
+    return await RemoveChatFromGroup(context);
+  }
+}
 // export async function adjustBotSettings(ctx: any) {
 //   console.log(`Settings adjustment requested`);
 //   // await ctx.reply('Settings are currently under development.');

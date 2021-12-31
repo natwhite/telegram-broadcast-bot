@@ -97,6 +97,17 @@ export class DataService {
     return DataService;
   }
 
+  public static removeChannelFromGroup(channelId: number, groupName: string): DataService {
+    const channelGroup = DataStorage.channelGroups.find(channelGroup => channelGroup.name == groupName);
+
+    if (!channelGroup)
+      throw new Error(`Unable to find existing channel group ${groupName}, creating one instead`);
+
+    channelGroup.channelsIds.findIndex(id => id === channelId);
+
+    return DataService;
+  }
+
   public static configureClient(channel: Channel, client: Client): DataService {
     const matchedChannel = DataStorage.channels.find(c => c.id == channel.id);
 
@@ -120,6 +131,23 @@ export class DataService {
     if (channelIndex < 0) throw new Error('Channel does not exist in the admin channel list');
 
     DataStorage.adminChats.splice(channelIndex);
+    return DataService;
+  }
+
+  public static addAdmins(user: User[]): DataService {
+    DataStorage.globalAdmins.push(...user);
+    return DataService;
+  }
+
+  public static removeAdmins(users: User[]): DataService {
+    users.forEach(user => {
+      const userIndex = DataStorage.globalAdmins.findIndex(admin => admin.id == user.id);
+
+      console.log(`Removing user ${user.first_name} from admins list at index ${userIndex}.`);
+      if (userIndex < 0) throw new Error('User does not exist in the global admins list');
+
+      DataStorage.globalAdmins.splice(userIndex);
+    });
     return DataService;
   }
 
