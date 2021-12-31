@@ -25,14 +25,14 @@ import {CommandLoaderService} from './src/services/command.loader.service';
 
   CommandLoaderService.loadCommands(bot);
 
-  bot.on('message', ctx => {
-    console.log(ctx.message);
-  });
-
-  bot.on('callback_query:data', ctx => {
-    console.log(ctx);
-    console.log(ctx.message);
-  });
+  // bot.on('message', ctx => {
+  //   console.log(ctx.message);
+  // });
+  //
+  // bot.on('callback_query:data', ctx => {
+  //   console.log(ctx);
+  //   console.log(ctx.message);
+  // });
 
   // Start the bot (using long polling)
   await bot.start({drop_pending_updates: true});

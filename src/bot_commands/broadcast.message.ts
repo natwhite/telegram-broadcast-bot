@@ -4,13 +4,19 @@ import {DataService} from '../services/data.service';
 
 export async function BroadcastMessage(context: Context, api: Api) {
 
+  const helpText = '/broadcast <group=all> Message text without quotes.';
   const rawMessage = parseCommandTextFromContext(context);
 
-  if (!rawMessage) throw new Error('Broadcast message cannot be undefined');
+  if (!rawMessage)
+    return await context.reply(`Broadcast group cannot be undefined.\n${helpText}`);
+  // throw new Error('Broadcast message cannot be undefined');
 
   let splitMessage = rawMessage.trim().split(' ');
   const groupName = splitMessage[0];
   const broadcastMessage = splitMessage.slice(1).join(' ');
+
+  if (!broadcastMessage)
+    return await context.reply(`Broadcast message cannot be undefined.\n${helpText}`);
 
   // DataService.getClientChannels().forEach(channel => {
   if (groupName == 'all')
